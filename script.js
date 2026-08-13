@@ -37,15 +37,20 @@ const $ = id => document.getElementById(id);
 const defaultSlides = ["images/hero_collage.png","images/slide_1.svg","images/slide_2.svg","images/slide_3.svg","images/slide_4.svg","images/slide_5.svg"];
 
 function save(){ 
-  localStorage.setItem("fouadGames", JSON.stringify(games)); 
-  localStorage.setItem("fouadCart", JSON.stringify(cart)); 
+  try {
+    localStorage.setItem("fouadGames", JSON.stringify(games)); 
+    localStorage.setItem("fouadCart", JSON.stringify(cart)); 
+    return true;
+  } catch(e) {
+    alert("⚠️ الذاكرة التخزينية للمتصفح ممتلئة! يرجى اختيار صورة بحجم أصفر أو حذِف بعض الألعاب القديمة.");
+    return false;
+  }
 }
 
 function price(){ 
   return Math.floor(cart.length/3)*1000 + (cart.length%3)*500; 
 }
 
-// عرض الألعاب مع زر الفيديو وزر الإضافة للسلة
 function renderGames(){
   const grid = $("gamesGrid");
   if (!grid) return;
@@ -69,7 +74,6 @@ function renderGames(){
   `).join("") || "<p>ما لقيناش اللعبة.</p>";
 }
 
-// دالة عرض الفيديو داخل نافذة منبثقة
 function openVideoModal(encodedUrl) {
   const videoUrl = decodeURIComponent(encodedUrl);
   if (!videoUrl || videoUrl === 'undefined' || videoUrl.trim() === '') {
@@ -223,43 +227,57 @@ function deleteGame(i){
 if($("adminBtn")) $("adminBtn").onclick=()=>{$("admin").classList.remove("hidden"); renderAdmin();};
 if($("adminClose")) $("adminClose").onclick=()=>$("admin").classList.add("hidden");
 
+// دالة لتقليل حجم الصورة وتضيغطها
+function compressImage(file, callback) {
+  const reader = new FileReader();
+  reader.readAsDataURL(file);
+  reader.onload = event => {
+    const img = new Image();
+    img.src = event.target.result;
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const MAX_WIDTH = 400;
+      const scaleFactor = MAX_WIDTH / img.width;
+      canvas.width = MAX_WIDTH;
+      canvas.height = img.height * scaleFactor;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      callback(canvas.toDataURL('image/jpeg', 0.7));
+    };
+  };
+}
+
 // إضافة لعبة جديدة
 if($("addGame")) {
-  $("addGame").onsubmit=e=>{
+  $("addGame").addEventListener("submit", function(e) {
     e.preventDefault();
-    const nameVal = $("gName").value.trim();
-    const priceVal = Number($("gPrice").value) || 500;
-    const videoUrl = $("gVideo") ? $("gVideo").value.trim() : "";
-    const f = $("gImage").files ? $("gImage").files[0] : null;
+    const nameInput = $("gName");
+    const priceInput = $("gPrice");
+    const videoInput = $("gVideo");
+    const imageInput = $("gImage");
 
-    if(!nameVal) {
-      showToast("⚠️ اكتب اسم اللعبة");
-      return;
-    }
+    if(!nameInput.value.trim()) { alert("يرجى إدخال اسم اللعبة"); return; }
+    if(!imageInput.files || !imageInput.files[0]) { alert("يرجى اختيار صورة الغلاف"); return; }
 
-    if(!f) {
-      showToast("⚠️ اختر صورة الغلاف");
-      return;
-    }
+    compressImage(imageInput.files[0], function(base64Image) {
+      const newGame = {
+        id: Date.now(),
+        name: nameInput.value.trim(),
+        image: base64Image,
+        price: Number(priceInput.value) || 500,
+        visible: true,
+        video: videoInput ? videoInput.value.trim() : ""
+      };
 
-    const r=new FileReader();
-    r.onload=()=>{
-      games.push({
-        id: Date.now(), 
-        name: nameVal, 
-        image: r.result, 
-        price: priceVal, 
-        visible: true, 
-        video: videoUrl
-      });
-      save(); 
-      renderGames(); 
-      renderAdmin(); 
-      e.target.reset(); 
-      showToast("✅ تمت إضافة اللعبة بالفيديو بنجاح");
-    };
-    r.readAsDataURL(f);
-  };
+      games.push(newGame);
+      if(save()) {
+        renderGames();
+        renderAdmin();
+        e.target.reset();
+        alert("✅ تمت إضافة اللعبة بنجاح!");
+      }
+    });
+  });
 }
 
 function showToast(text){ 
@@ -292,12 +310,10 @@ if($("heroFiles")) {
     if(!fs.length)return;
     const out=[]; let done=0;
     fs.forEach(f=>{
-      const r=new FileReader();
-      r.onload=()=>{
-        out.push(r.result); done++;
+      compressImage(f, function(res){
+        out.push(res); done++;
         if(done===fs.length){ localStorage.setItem("fouadHeroSlides",JSON.stringify(out)); renderHero(); showToast("🖼️ تم تحديث خلفية الموقع"); }
-      };
-      r.readAsDataURL(f);
+      });
     });
   });
 }
@@ -316,16 +332,14 @@ if($("editGameForm")) {
     if($("editVideo")) g.video=$("editVideo").value.trim();
     const f=$("editImage").files ? $("editImage").files[0] : null;
     if(f){
-      const r=new FileReader();
-      r.onload=()=>{ 
-        g.image=r.result; 
+      compressImage(f, function(res){
+        g.image=res; 
         save(); 
         renderGames(); 
         renderAdmin(); 
         $("editGameModal").classList.add("hidden"); 
         showToast("✅ تم تعديل اللعبة والغلاف والفيديو"); 
-      };
-      r.readAsDataURL(f);
+      });
     }else{
       save(); 
       renderGames(); 
@@ -361,7 +375,6 @@ async function deleteOrder(code){
 
 if($("adminLoadOrders")) $("adminLoadOrders").onclick=loadAdminOrders;
 
-// التحديث والتنفيذ عند التحميل
 renderGames(); 
 updateCartCount(); 
 renderHero();
