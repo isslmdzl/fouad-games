@@ -1,4 +1,4 @@
-<!doctype html>
+ <!doctype html>
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="utf-8">
@@ -55,16 +55,16 @@
     <div id="adminOrders"></div>
 
     <!-- نموذج إضافة لعبة جديدة -->
-    <form id="addGame">
+    <form id="addGame" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;">
       <h3>➕ إضافة لعبة جديدة</h3>
-      <input id="gName" required placeholder="اسم اللعبة">
-      <input id="gPrice" required type="number" min="0" value="500" placeholder="السعر بالدج">
-      <input type="text" id="gVideo" placeholder="رابط فيديو يوتيوب (اختياري)">
-      <label class="file">
+      <input id="gName" required placeholder="اسم اللعبة" style="width: 100%; box-sizing: border-box;">
+      <input id="gPrice" required type="number" min="0" value="500" placeholder="السعر بالدج" style="width: 100%; box-sizing: border-box;">
+      <input type="text" id="gVideo" placeholder="رابط فيديو يوتيوب (اختياري)" style="width: 100%; box-sizing: border-box;">
+      <label class="file" style="width: 100%; box-sizing: border-box;">
         <span>🖼️ اختر غلاف اللعبة</span>
         <input id="gImage" required type="file" accept="image/*">
       </label>
-      <button class="btn">+ إضافة اللعبة</button>
+      <button class="btn" style="width: 100%;">+ إضافة اللعبة</button>
     </form>
 
     <!-- تعديل خلفية الموقع -->
@@ -78,21 +78,29 @@
     <!-- قائمة الألعاب المتاحة للتعديل والحذف -->
     <div id="adminList"></div>
 
-    <!-- نافذة تعديل لعبة -->
+    <!-- نافذة تعديل لعبة (تم تصليح التنسيق والتجاوب) -->
     <div id="editGameModal" class="mini-modal hidden">
-      <div class="mini-box">
+      <div class="mini-box" style="max-width: 450px; width: 90%; padding: 20px;">
         <button id="editClose" class="close">×</button>
-        <h3>✏️ تعديل اللعبة</h3>
-        <form id="editGameForm">
+        <h3 style="margin-bottom: 15px;">✏️ تعديل اللعبة</h3>
+        <form id="editGameForm" style="display: flex; flex-direction: column; gap: 12px; width: 100%;">
           <input type="hidden" id="editId">
-          <input id="editName" required placeholder="اسم اللعبة">
-          <input id="editPrice" required type="number" min="0" placeholder="السعر بالدج">
-          <input id="editVideo" type="text" placeholder="رابط فيديو يوتيوب (اختياري)">
-          <label class="file">
+          
+          <label style="text-align: right; font-size: 13px; color: #ccc;">اسم اللعبة:</label>
+          <input id="editName" required placeholder="اسم اللعبة" style="width: 100%; padding: 10px; box-sizing: border-box; border-radius: 6px;">
+          
+          <label style="text-align: right; font-size: 13px; color: #ccc;">السعر بالدج:</label>
+          <input id="editPrice" required type="number" min="0" placeholder="السعر بالدج" style="width: 100%; padding: 10px; box-sizing: border-box; border-radius: 6px;">
+          
+          <label style="text-align: right; font-size: 13px; color: #ccc;">رابط فيديو العرض (YouTube):</label>
+          <input id="editVideo" type="text" placeholder="https://www.youtube.com/watch?v=..." style="width: 100%; padding: 10px; box-sizing: border-box; border-radius: 6px;">
+          
+          <label class="file" style="width: 100%; box-sizing: border-box; margin-top: 5px;">
             <span>🖼️ تغيير الغلاف (اختياري)</span>
             <input id="editImage" type="file" accept="image/*">
           </label>
-          <button class="btn">💾 حفظ التعديلات</button>
+          
+          <button class="btn" style="width: 100%; margin-top: 10px; padding: 12px;">💾 حفظ التعديلات</button>
         </form>
       </div>
     </div>
