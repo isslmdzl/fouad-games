@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fouad Games | PS4</title><link rel="stylesheet" href="style.css"></head>
+<body>
+<header><div class="logo">🎮 FOUAD GAMES</div><div class="head-actions">
+<button id="myOrdersBtn">📋 طلباتي</button><button id="cartBtn">🛒 السلة <b id="cartCount">0</b></button></div></header>
+
+<section class="hero">
+<div id="heroSlides" class="hero-slides"></div><div class="hero-shade"></div>
+<div class="hero-content"><span class="badge">FOUAD GAMES • PLAYSTATION 4</span>
+<h1>اختر ألعابك قبل ما تجي للمحل</h1>
+<p><strong>500 دج</strong> للعبة &nbsp; • &nbsp; <strong>3 ألعاب بـ 1000 دج</strong></p>
+<a href="#games" class="btn">ابدأ الاختيار 🎮</a></div>
+</section>
+
+<main id="games"><div class="heading"><div><h2>ألعاب PS4</h2><p>اختار ألعابك أولاً، وبعدها روح للسلة وأكد الطلب.</p></div><div class="offer">🔥 3 ألعاب = 1000 دج</div></div>
+<div class="filters"><input id="search" placeholder="🔍 ابحث عن لعبة..."></div><div id="gamesGrid" class="grid"></div></main>
+
+<section id="admin" class="admin hidden"><div class="admin-box"><button id="adminClose" class="close">×</button>
+<h2>⚙️ إدارة المحل</h2><p class="muted">إدارة الألعاب والطلبات والخلفية.</p>
+<div class="admin-login-row"><input id="adminPassword" type="password" placeholder="كلمة سر الإدارة"><button id="adminLoadOrders" class="secondary">📋 الطلبات</button></div>
+<div id="adminOrders"></div>
+<form id="addGame"><input id="gName" required placeholder="اسم اللعبة"><input id="gPrice" required type="number" min="0" value="500" placeholder="السعر بالدج">
+<label class="file"><span>🖼️ اختر غلاف اللعبة</span><input id="gImage" required type="file" accept="image/*"></label><button class="btn">+ إضافة اللعبة</button></form>
+<div class="hero-admin"><h3>🖼️ خلفية الموقع المتحركة</h3><p class="muted small">ارفع حتى 6 صور Gameplay/Screenshots، والموقع يبدل بينها تلقائياً.</p>
+<input id="heroFiles" type="file" accept="image/*" multiple>
+<button id="clearHero" type="button" class="secondary">إرجاع الخلفية الافتراضية</button></div>
+<div id="adminList"></div>
+<div id="editGameModal" class="mini-modal hidden">
+  <div class="mini-box">
+    <button id="editClose" class="close">×</button>
+    <h3>✏️ تعديل اللعبة</h3>
+    <form id="editGameForm">
+      <input type="hidden" id="editId">
+      <input id="editName" required placeholder="اسم اللعبة">
+      <input id="editPrice" required type="number" min="0" placeholder="السعر بالدج">
+      <label class="file"><span>🖼️ تغيير الغلاف (اختياري)</span><input id="editImage" type="file" accept="image/*"></label>
+      <button class="btn">💾 حفظ التعديلات</button>
+    </form>
+  </div>
+</div>
+</div></section>
+
+<div id="cartModal" class="overlay hidden"><div class="modal"><button id="cartClose" class="close">×</button><h2>🛒 السلة</h2><div id="items"></div>
+<div class="summary"><span>الألعاب: <b id="count">0</b></span><span>المجموع: <strong id="total">0 دج</strong></span></div>
+<div class="notice">🚫 لا يوجد توصيل — الطلب للتحضير والاستلام من المحل.</div><button id="checkout" class="btn full">متابعة للطلب</button>
+<div id="customerBox" class="hidden"><h3>معلومات الطلب</h3><form id="orderForm"><input id="name" required placeholder="الاسم الكامل"><input id="phone" required type="tel" placeholder="رقم الهاتف"><button class="btn full">تأكيد الطلب</button></form></div>
+<div id="success" class="success hidden"></div></div></div>
+
+<div id="ordersModal" class="overlay hidden"><div class="modal"><button id="ordersClose" class="close">×</button><h2>📋 طلباتي</h2><div id="orders"></div></div></div>
+<div id="toast" class="toast">✅ تمت إضافة اللعبة إلى السلة</div><footer><button id="adminBtn">⚙️ إدارة المحل</button></footer>
+<script src="script.js"></script></body></html>
