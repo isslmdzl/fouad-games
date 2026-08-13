@@ -36,14 +36,22 @@ let cart = JSON.parse(localStorage.getItem("fouadCart") || "[]");
 const $ = id => document.getElementById(id);
 const defaultSlides = ["images/hero_collage.png","images/slide_1.svg","images/slide_2.svg","images/slide_3.svg","images/slide_4.svg","images/slide_5.svg"];
 
-function save(){ localStorage.setItem("fouadGames", JSON.stringify(games)); localStorage.setItem("fouadCart", JSON.stringify(cart)); }
-function price(){ return Math.floor(cart.length/3)*1000 + (cart.length%3)*500; }
+function save(){ 
+  localStorage.setItem("fouadGames", JSON.stringify(games)); 
+  localStorage.setItem("fouadCart", JSON.stringify(cart)); 
+}
+
+function price(){ 
+  return Math.floor(cart.length/3)*1000 + (cart.length%3)*500; 
+}
 
 // عرض الألعاب مع زر الفيديو وزر الإضافة للسلة
 function renderGames(){
+  const grid = $("gamesGrid");
+  if (!grid) return;
   const q = $("search") ? $("search").value.toLowerCase().trim() : "";
   const list = games.filter(g => g.visible !== false && g.name.toLowerCase().includes(q));
-  $("gamesGrid").innerHTML = list.map(g => `
+  grid.innerHTML = list.map(g => `
     <article class="card">
       <div class="cover">
         <img src="${g.image}" alt="${g.name}" loading="lazy" onerror="this.style.display='none';this.parentElement.textContent='🎮'">
@@ -98,13 +106,46 @@ function closeVideoModal() {
   if (modal) modal.remove();
 }
 
-function addToCart(id,btn){ const g=games.find(x=>x.id===id); if(!g)return; cart.push(g); save(); updateCartCount(); btn.classList.remove("pop"); void btn.offsetWidth; btn.classList.add("pop"); showToast(`✅ ${g.name} تمت إضافتها للسلة`); }
-function updateCartCount(){ $("cartCount").textContent=cart.length; }
-function priceFmt(n){ return n.toLocaleString("fr-DZ")+" دج"; }
+function addToCart(id,btn){ 
+  const g=games.find(x=>x.id===id); 
+  if(!g)return; 
+  cart.push(g); 
+  save(); 
+  updateCartCount(); 
+  btn.classList.remove("pop"); 
+  void btn.offsetWidth; 
+  btn.classList.add("pop"); 
+  showToast(`✅ ${g.name} تمت إضافتها للسلة`); 
+}
 
-function renderCart(){ $("count").textContent=cart.length; $("total").textContent=priceFmt(price()); $("items").innerHTML=cart.length?cart.map((g,i)=>`<div class="row"><span>${g.name}</span><button class="remove" onclick="removeItem(${i})">حذف</button></div>`).join(""):"<p>السلة فارغة.</p>"; $("checkout").classList.toggle("hidden",!cart.length); }
-function removeItem(i){ cart.splice(i,1); save(); renderCart(); updateCartCount(); }
-function openCart(){ $("cartModal").classList.remove("hidden"); $("customerBox").classList.add("hidden"); $("success").classList.add("hidden"); renderCart(); }
+function updateCartCount(){ 
+  if($("cartCount")) $("cartCount").textContent=cart.length; 
+}
+
+function priceFmt(n){ 
+  return n.toLocaleString("fr-DZ")+" دج"; 
+}
+
+function renderCart(){ 
+  if($("count")) $("count").textContent=cart.length; 
+  if($("total")) $("total").textContent=priceFmt(price()); 
+  if($("items")) $("items").innerHTML=cart.length?cart.map((g,i)=>`<div class="row"><span>${g.name}</span><button class="remove" onclick="removeItem(${i})">حذف</button></div>`).join(""):"<p>السلة فارغة.</p>"; 
+  if($("checkout")) $("checkout").classList.toggle("hidden",!cart.length); 
+}
+
+function removeItem(i){ 
+  cart.splice(i,1); 
+  save(); 
+  renderCart(); 
+  updateCartCount(); 
+}
+
+function openCart(){ 
+  if($("cartModal")) $("cartModal").classList.remove("hidden"); 
+  if($("customerBox")) $("customerBox").classList.add("hidden"); 
+  if($("success")) $("success").classList.add("hidden"); 
+  renderCart(); 
+}
 
 if($("cartBtn")) $("cartBtn").onclick=openCart;
 if($("cartClose")) $("cartClose").onclick=()=>$("cartModal").classList.add("hidden");
@@ -143,6 +184,7 @@ if($("myOrdersBtn")) {
 if($("ordersClose")) $("ordersClose").onclick=()=>$("ordersModal").classList.add("hidden");
 
 function renderAdmin(){
+  if(!$("adminList")) return;
   $("adminList").innerHTML=games.map((g,i)=>`<div class="admin-item">
     <span><img class="admin-thumb" src="${g.image}" onerror="this.style.display='none'">${g.name} — ${g.price||500} دج</span>
     <span>
@@ -162,28 +204,72 @@ function editGame(i){
   $("editGameModal").classList.remove("hidden");
 }
 
-function toggleGame(i){ games[i].visible=games[i].visible===false; save(); renderGames(); renderAdmin(); }
-function deleteGame(i){ if(confirm("تحب تحذف هذه اللعبة؟")){ games.splice(i,1); save(); renderGames(); renderAdmin(); } }
+function toggleGame(i){ 
+  games[i].visible=games[i].visible===false; 
+  save(); 
+  renderGames(); 
+  renderAdmin(); 
+}
+
+function deleteGame(i){ 
+  if(confirm("تحب تحذف هذه اللعبة؟")){ 
+    games.splice(i,1); 
+    save(); 
+    renderGames(); 
+    renderAdmin(); 
+  } 
+}
 
 if($("adminBtn")) $("adminBtn").onclick=()=>{$("admin").classList.remove("hidden"); renderAdmin();};
 if($("adminClose")) $("adminClose").onclick=()=>$("admin").classList.add("hidden");
 
+// إضافة لعبة جديدة
 if($("addGame")) {
   $("addGame").onsubmit=e=>{
     e.preventDefault();
-    const f=$("gImage").files[0];
-    if(!f)return;
+    const nameVal = $("gName").value.trim();
+    const priceVal = Number($("gPrice").value) || 500;
+    const videoUrl = $("gVideo") ? $("gVideo").value.trim() : "";
+    const f = $("gImage").files ? $("gImage").files[0] : null;
+
+    if(!nameVal) {
+      showToast("⚠️ اكتب اسم اللعبة");
+      return;
+    }
+
+    if(!f) {
+      showToast("⚠️ اختر صورة الغلاف");
+      return;
+    }
+
     const r=new FileReader();
     r.onload=()=>{
-      const videoUrl = $("gVideo") ? $("gVideo").value.trim() : "";
-      games.push({id:Date.now(), name:$("gName").value.trim(), image:r.result, price:Number($("gPrice").value)||500, visible:true, video:videoUrl});
-      save(); renderGames(); renderAdmin(); e.target.reset(); showToast("✅ تمت إضافة اللعبة بالفيديو");
+      games.push({
+        id: Date.now(), 
+        name: nameVal, 
+        image: r.result, 
+        price: priceVal, 
+        visible: true, 
+        video: videoUrl
+      });
+      save(); 
+      renderGames(); 
+      renderAdmin(); 
+      e.target.reset(); 
+      showToast("✅ تمت إضافة اللعبة بالفيديو بنجاح");
     };
     r.readAsDataURL(f);
   };
 }
 
-function showToast(text){ const t=$("toast"); if(!t)return; t.textContent=text; t.classList.add("show"); clearTimeout(window.toastTimer); window.toastTimer=setTimeout(()=>t.classList.remove("show"),1700); }
+function showToast(text){ 
+  const t=$("toast"); 
+  if(!t)return; 
+  t.textContent=text; 
+  t.classList.add("show"); 
+  clearTimeout(window.toastTimer); 
+  window.toastTimer=setTimeout(()=>t.classList.remove("show"),1700); 
+}
 
 function renderHero(){
   if(!$("heroSlides")) return;
@@ -228,18 +314,27 @@ if($("editGameForm")) {
     g.name=$("editName").value.trim();
     g.price=Number($("editPrice").value)||500;
     if($("editVideo")) g.video=$("editVideo").value.trim();
-    const f=$("editImage").files[0];
+    const f=$("editImage").files ? $("editImage").files[0] : null;
     if(f){
       const r=new FileReader();
-      r.onload=()=>{ g.image=r.result; save(); renderGames(); renderAdmin(); $("editGameModal").classList.add("hidden"); showToast("✅ تم تعديل اللعبة والغلاف والفيديو"); };
+      r.onload=()=>{ 
+        g.image=r.result; 
+        save(); 
+        renderGames(); 
+        renderAdmin(); 
+        $("editGameModal").classList.add("hidden"); 
+        showToast("✅ تم تعديل اللعبة والغلاف والفيديو"); 
+      };
       r.readAsDataURL(f);
     }else{
-      save(); renderGames(); renderAdmin(); $("editGameModal").classList.add("hidden"); showToast("✅ تم تعديل اللعبة والفيديو بنجاح");
+      save(); 
+      renderGames(); 
+      renderAdmin(); 
+      $("editGameModal").classList.add("hidden"); 
+      showToast("✅ تم تعديل اللعبة والفيديو بنجاح");
     }
   };
 }
-
-renderGames(); updateCartCount(); renderHero();
 
 async function loadAdminOrders(){
   const p=$("adminPassword").value; if(!p){showToast("🔐 اكتب كلمة السر");return}
@@ -251,6 +346,22 @@ async function loadAdminOrders(){
   }catch(e){ showToast("❌ كلمة السر خاطئة أو السيرفر غير شغال") }
 }
 
-async function changeStatus(code,status){ const p=$("adminPassword").value; await fetch("/api/admin/orders/"+encodeURIComponent(code),{method:"PATCH",headers:{"Content-Type":"application/json","x-admin-password":p},body:JSON.stringify({status})}); showToast("✅ تم تحديث الحالة") }
-async function deleteOrder(code){ if(!confirm("تحب تحذف الطلب؟"))return; const p=$("adminPassword").value; await fetch("/api/admin/orders/"+encodeURIComponent(code),{method:"DELETE",headers:{"x-admin-password":p}}); loadAdminOrders() }
+async function changeStatus(code,status){ 
+  const p=$("adminPassword").value; 
+  await fetch("/api/admin/orders/"+encodeURIComponent(code),{method:"PATCH",headers:{"Content-Type":"application/json","x-admin-password":p},body:JSON.stringify({status})}); 
+  showToast("✅ تم تحديث الحالة"); 
+}
+
+async function deleteOrder(code){ 
+  if(!confirm("تحب تحذف الطلب؟"))return; 
+  const p=$("adminPassword").value; 
+  await fetch("/api/admin/orders/"+encodeURIComponent(code),{method:"DELETE",headers:{"x-admin-password":p}}); 
+  loadAdminOrders(); 
+}
+
 if($("adminLoadOrders")) $("adminLoadOrders").onclick=loadAdminOrders;
+
+// التحديث والتنفيذ عند التحميل
+renderGames(); 
+updateCartCount(); 
+renderHero();
