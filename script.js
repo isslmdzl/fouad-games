@@ -42,7 +42,7 @@ function save(){
     localStorage.setItem("fouadCart", JSON.stringify(cart)); 
     return true;
   } catch(e) {
-    alert("⚠️ الذاكرة التخزينية للمتصفح ممتلئة! يرجى اختيار صورة بحجم أصفر أو حذِف بعض الألعاب القديمة.");
+    alert("⚠️ الذاكرة التخزينية للمتصفح ممتلئة! يرجى حذِف بعض الألعاب المضافة سابقاً وتجربة رفع صورة أصغر.");
     return false;
   }
 }
@@ -227,7 +227,7 @@ function deleteGame(i){
 if($("adminBtn")) $("adminBtn").onclick=()=>{$("admin").classList.remove("hidden"); renderAdmin();};
 if($("adminClose")) $("adminClose").onclick=()=>$("admin").classList.add("hidden");
 
-// دالة لتقليل حجم الصورة وتضيغطها
+// دالة لتقليل ضغط الصورة لأقصى درجة لحفظ المساحة
 function compressImage(file, callback) {
   const reader = new FileReader();
   reader.readAsDataURL(file);
@@ -236,13 +236,13 @@ function compressImage(file, callback) {
     img.src = event.target.result;
     img.onload = () => {
       const canvas = document.createElement('canvas');
-      const MAX_WIDTH = 400;
+      const MAX_WIDTH = 220; // تصغير العرض لتصبح الصورة خفيفة جداً (أقل من 20 كيلوبايت)
       const scaleFactor = MAX_WIDTH / img.width;
       canvas.width = MAX_WIDTH;
       canvas.height = img.height * scaleFactor;
       const ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      callback(canvas.toDataURL('image/jpeg', 0.7));
+      callback(canvas.toDataURL('image/jpeg', 0.5));
     };
   };
 }
