@@ -41,7 +41,7 @@ function price(){ return Math.floor(cart.length/3)*1000 + (cart.length%3)*500; }
 
 // عرض الألعاب مع زر الفيديو وزر الإضافة للسلة
 function renderGames(){
-  const q = $("search").value.toLowerCase().trim();
+  const q = $("search") ? $("search").value.toLowerCase().trim() : "";
   const list = games.filter(g => g.visible !== false && g.name.toLowerCase().includes(q));
   $("gamesGrid").innerHTML = list.map(g => `
     <article class="card">
@@ -54,7 +54,7 @@ function renderGames(){
         <div class="price">${g.price||500} دج</div>
         <div style="display:flex; gap:5px; margin-top:8px;">
           <button class="add" style="flex:1;" onclick="addToCart(${g.id},this)">+ أضف للسلة</button>
-          <button class="video-btn" onclick="openVideoModal('${g.video || ''}')" style="background:#e50914; color:#fff; border:none; padding:6px 10px; border-radius:6px; cursor:pointer; font-weight:bold;">🎬 فيديو</button>
+          <button class="video-btn" onclick="openVideoModal('${encodeURIComponent(g.video || '')}')" style="background:#e50914; color:#fff; border:none; padding:6px 10px; border-radius:6px; cursor:pointer; font-weight:bold;">🎬 فيديو</button>
         </div>
       </div>
     </article>
@@ -62,7 +62,8 @@ function renderGames(){
 }
 
 // دالة عرض الفيديو داخل نافذة منبثقة
-function openVideoModal(videoUrl) {
+function openVideoModal(encodedUrl) {
+  const videoUrl = decodeURIComponent(encodedUrl);
   if (!videoUrl || videoUrl === 'undefined' || videoUrl.trim() === '') {
     showToast("⚠️ لا يوجد فيديو متاح لهذه اللعبة حالياً");
     return;
@@ -70,15 +71,19 @@ function openVideoModal(videoUrl) {
   
   let embedUrl = videoUrl;
   if (videoUrl.includes("watch?v=")) {
-    embedUrl = videoUrl.replace("watch?v=", "embed/");
+    embedUrl = videoUrl.replace("watch?v=", "embed/").split("&")[0];
   } else if (videoUrl.includes("youtu.be/")) {
-    embedUrl = videoUrl.replace("youtu.be/", "www.youtube.com/embed/");
+    embedUrl = videoUrl.replace("youtu.be/", "www.youtube.com/embed/").split("?")[0];
+  } else if (videoUrl.includes("youtube.com/shorts/")) {
+    embedUrl = videoUrl.replace("youtube.com/shorts/", "www.youtube.com/embed/").split("?")[0];
   }
+
+  closeVideoModal();
 
   const modalHTML = `
     <div id="videoModal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); display:flex; align-items:center; justify-content:center; z-index:99999;">
       <div style="position:relative; width:90%; max-width:720px; background:#111; padding:10px; border-radius:12px; box-shadow:0 0 20px rgba(0,0,0,0.5);">
-        <button onclick="closeVideoModal()" style="position:absolute; top:-12px; right:-12px; background:#e50914; color:#fff; border:none; border-radius:50%; width:32px; height:32px; cursor:pointer; font-weight:bold; font-size:16px;">✕</button>
+        <button onclick="closeVideoModal()" style="position:absolute; top:-12px; right:-12px; background:#e50914; color:#fff; border:none; border-radius:50%; width:32px; height:32px; cursor:pointer; font-weight:bold; font-size:16px; z-index:100000;">✕</button>
         <div style="position:relative; padding-bottom:56.25%; height:0; overflow:hidden; border-radius:8px;">
           <iframe src="${embedUrl}?autoplay=1" style="position:absolute; top:0; left:0; width:100%; height:100%; border:0;" allowfullscreen allow="autoplay"></iframe>
         </div>
@@ -101,37 +106,41 @@ function renderCart(){ $("count").textContent=cart.length; $("total").textConten
 function removeItem(i){ cart.splice(i,1); save(); renderCart(); updateCartCount(); }
 function openCart(){ $("cartModal").classList.remove("hidden"); $("customerBox").classList.add("hidden"); $("success").classList.add("hidden"); renderCart(); }
 
-$("cartBtn").onclick=openCart;
-$("cartClose").onclick=()=>$("cartModal").classList.add("hidden");
-$("search").oninput=renderGames;
-$("checkout").onclick=()=>$("customerBox").classList.remove("hidden");
+if($("cartBtn")) $("cartBtn").onclick=openCart;
+if($("cartClose")) $("cartClose").onclick=()=>$("cartModal").classList.add("hidden");
+if($("search")) $("search").oninput=renderGames;
+if($("checkout")) $("checkout").onclick=()=>$("customerBox").classList.remove("hidden");
 
-$("orderForm").onsubmit=async e=>{
-  e.preventDefault();
-  if(!cart.length)return;
-  let code="FG-"+String(Date.now()).slice(-6);
-  const order={name:$("name").value,phone:$("phone").value,games:cart.map(g=>g.name),total:price(),createdAt:new Date().toISOString(),status:"جديد"};
-  let online=false;
-  try{
-    const r=await fetch("/api/orders",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(order)});
-    if(r.ok){ const x=await r.json(); code=x.code; online=true; }
-  }catch(e){}
-  if(!online){
+if($("orderForm")) {
+  $("orderForm").onsubmit=async e=>{
+    e.preventDefault();
+    if(!cart.length)return;
+    let code="FG-"+String(Date.now()).slice(-6);
+    const order={name:$("name").value,phone:$("phone").value,games:cart.map(g=>g.name),total:price(),createdAt:new Date().toISOString(),status:"جديد"};
+    let online=false;
+    try{
+      const r=await fetch("/api/orders",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(order)});
+      if(r.ok){ const x=await r.json(); code=x.code; online=true; }
+    }catch(e){}
+    if(!online){
+      const orders=JSON.parse(localStorage.getItem("fouadOrders")||"[]");
+      orders.push({...order,code});
+      localStorage.setItem("fouadOrders",JSON.stringify(orders));
+    }
+    $("success").classList.remove("hidden");
+    $("success").innerHTML=`✅ تم تسجيل الطلب<br>رقم الطلب: <strong>${code}</strong><br>احتفظ بالرمز، وتقدر تشوفه لاحقاً من «طلباتي».`;
+    cart=[]; save(); renderCart(); updateCartCount(); e.target.reset(); $("customerBox").classList.add("hidden");
+  };
+}
+
+if($("myOrdersBtn")) {
+  $("myOrdersBtn").onclick=()=>{
     const orders=JSON.parse(localStorage.getItem("fouadOrders")||"[]");
-    orders.push({...order,code});
-    localStorage.setItem("fouadOrders",JSON.stringify(orders));
-  }
-  $("success").classList.remove("hidden");
-  $("success").innerHTML=`✅ تم تسجيل الطلب<br>رقم الطلب: <strong>${code}</strong><br>احتفظ بالرمز، وتقدر تشوفه لاحقاً من «طلباتي».`;
-  cart=[]; save(); renderCart(); updateCartCount(); e.target.reset(); $("customerBox").classList.add("hidden");
-};
-
-$("myOrdersBtn").onclick=()=>{
-  const orders=JSON.parse(localStorage.getItem("fouadOrders")||"[]");
-  $("orders").innerHTML=orders.length?orders.slice().reverse().map(o=>`<div class="order-card"><b>${o.code}</b><br><span class="status">${o.status}</span><br>${o.games.join(" • ")}<br><strong>${priceFmt(o.total)}</strong></div>`).join(""):"<p>ما عندك حتى طلب محفوظ في هذا المتصفح.</p>";
-  $("ordersModal").classList.remove("hidden");
-};
-$("ordersClose").onclick=()=>$("ordersModal").classList.add("hidden");
+    $("orders").innerHTML=orders.length?orders.slice().reverse().map(o=>`<div class="order-card"><b>${o.code}</b><br><span class="status">${o.status}</span><br>${o.games.join(" • ")}<br><strong>${priceFmt(o.total)}</strong></div>`).join(""):"<p>ما عندك حتى طلب محفوظ في هذا المتصفح.</p>";
+    $("ordersModal").classList.remove("hidden");
+  };
+}
+if($("ordersClose")) $("ordersClose").onclick=()=>$("ordersModal").classList.add("hidden");
 
 function renderAdmin(){
   $("adminList").innerHTML=games.map((g,i)=>`<div class="admin-item">
@@ -156,25 +165,28 @@ function editGame(i){
 function toggleGame(i){ games[i].visible=games[i].visible===false; save(); renderGames(); renderAdmin(); }
 function deleteGame(i){ if(confirm("تحب تحذف هذه اللعبة؟")){ games.splice(i,1); save(); renderGames(); renderAdmin(); } }
 
-$("adminBtn").onclick=()=>{$("admin").classList.remove("hidden"); renderAdmin();};
-$("adminClose").onclick=()=>$("admin").classList.add("hidden");
+if($("adminBtn")) $("adminBtn").onclick=()=>{$("admin").classList.remove("hidden"); renderAdmin();};
+if($("adminClose")) $("adminClose").onclick=()=>$("admin").classList.add("hidden");
 
-$("addGame").onsubmit=e=>{
-  e.preventDefault();
-  const f=$("gImage").files[0];
-  if(!f)return;
-  const r=new FileReader();
-  r.onload=()=>{
-    const videoUrl = $("gVideo") ? $("gVideo").value.trim() : "";
-    games.push({id:Date.now(), name:$("gName").value.trim(), image:r.result, price:Number($("gPrice").value)||500, visible:true, video:videoUrl});
-    save(); renderGames(); renderAdmin(); e.target.reset(); showToast("✅ تمت إضافة اللعبة");
+if($("addGame")) {
+  $("addGame").onsubmit=e=>{
+    e.preventDefault();
+    const f=$("gImage").files[0];
+    if(!f)return;
+    const r=new FileReader();
+    r.onload=()=>{
+      const videoUrl = $("gVideo") ? $("gVideo").value.trim() : "";
+      games.push({id:Date.now(), name:$("gName").value.trim(), image:r.result, price:Number($("gPrice").value)||500, visible:true, video:videoUrl});
+      save(); renderGames(); renderAdmin(); e.target.reset(); showToast("✅ تمت إضافة اللعبة بالفيديو");
+    };
+    r.readAsDataURL(f);
   };
-  r.readAsDataURL(f);
-};
+}
 
-function showToast(text){ const t=$("toast"); t.textContent=text; t.classList.add("show"); clearTimeout(window.toastTimer); window.toastTimer=setTimeout(()=>t.classList.remove("show"),1700); }
+function showToast(text){ const t=$("toast"); if(!t)return; t.textContent=text; t.classList.add("show"); clearTimeout(window.toastTimer); window.toastTimer=setTimeout(()=>t.classList.remove("show"),1700); }
 
 function renderHero(){
+  if(!$("heroSlides")) return;
   const saved=JSON.parse(localStorage.getItem("fouadHeroSlides")||"null");
   const slides=(saved&&saved.length?saved:defaultSlides);
   $("heroSlides").innerHTML=slides.map((s,i)=>`<div class="hero-slide ${i===0?"active":""}" style="background-image:url('${s}')"></div>`).join("");
@@ -188,39 +200,44 @@ function renderHero(){
   },4500);
 }
 
-$("heroFiles").addEventListener("change",e=>{
-  const fs=[...e.target.files].slice(0,6);
-  if(!fs.length)return;
-  const out=[]; let done=0;
-  fs.forEach(f=>{
-    const r=new FileReader();
-    r.onload=()=>{
-      out.push(r.result); done++;
-      if(done===fs.length){ localStorage.setItem("fouadHeroSlides",JSON.stringify(out)); renderHero(); showToast("🖼️ تم تحديث خلفية الموقع"); }
-    };
-    r.readAsDataURL(f);
+if($("heroFiles")) {
+  $("heroFiles").addEventListener("change",e=>{
+    const fs=[...e.target.files].slice(0,6);
+    if(!fs.length)return;
+    const out=[]; let done=0;
+    fs.forEach(f=>{
+      const r=new FileReader();
+      r.onload=()=>{
+        out.push(r.result); done++;
+        if(done===fs.length){ localStorage.setItem("fouadHeroSlides",JSON.stringify(out)); renderHero(); showToast("🖼️ تم تحديث خلفية الموقع"); }
+      };
+      r.readAsDataURL(f);
+    });
   });
-});
+}
 
-$("clearHero").onclick=()=>{ localStorage.removeItem("fouadHeroSlides"); location.reload(); };
+if($("clearHero")) $("clearHero").onclick=()=>{ localStorage.removeItem("fouadHeroSlides"); location.reload(); };
 
-$("editClose").onclick=()=>$("editGameModal").classList.add("hidden");
-$("editGameForm").onsubmit=e=>{
-  e.preventDefault();
-  const i=Number($("editId").value), g=games[i];
-  if(!g)return;
-  g.name=$("editName").value.trim();
-  g.price=Number($("editPrice").value)||500;
-  if($("editVideo")) g.video=$("editVideo").value.trim();
-  const f=$("editImage").files[0];
-  if(f){
-    const r=new FileReader();
-    r.onload=()=>{ g.image=r.result; save(); renderGames(); renderAdmin(); $("editGameModal").classList.add("hidden"); showToast("✅ تم تعديل اللعبة والغلاف"); };
-    r.readAsDataURL(f);
-  }else{
-    save(); renderGames(); renderAdmin(); $("editGameModal").classList.add("hidden"); showToast("✅ تم تعديل اللعبة");
-  }
-};
+if($("editClose")) $("editClose").onclick=()=>$("editGameModal").classList.add("hidden");
+
+if($("editGameForm")) {
+  $("editGameForm").onsubmit=e=>{
+    e.preventDefault();
+    const i=Number($("editId").value), g=games[i];
+    if(!g)return;
+    g.name=$("editName").value.trim();
+    g.price=Number($("editPrice").value)||500;
+    if($("editVideo")) g.video=$("editVideo").value.trim();
+    const f=$("editImage").files[0];
+    if(f){
+      const r=new FileReader();
+      r.onload=()=>{ g.image=r.result; save(); renderGames(); renderAdmin(); $("editGameModal").classList.add("hidden"); showToast("✅ تم تعديل اللعبة والغلاف والفيديو"); };
+      r.readAsDataURL(f);
+    }else{
+      save(); renderGames(); renderAdmin(); $("editGameModal").classList.add("hidden"); showToast("✅ تم تعديل اللعبة والفيديو بنجاح");
+    }
+  };
+}
 
 renderGames(); updateCartCount(); renderHero();
 
@@ -236,4 +253,4 @@ async function loadAdminOrders(){
 
 async function changeStatus(code,status){ const p=$("adminPassword").value; await fetch("/api/admin/orders/"+encodeURIComponent(code),{method:"PATCH",headers:{"Content-Type":"application/json","x-admin-password":p},body:JSON.stringify({status})}); showToast("✅ تم تحديث الحالة") }
 async function deleteOrder(code){ if(!confirm("تحب تحذف الطلب؟"))return; const p=$("adminPassword").value; await fetch("/api/admin/orders/"+encodeURIComponent(code),{method:"DELETE",headers:{"x-admin-password":p}}); loadAdminOrders() }
-$("adminLoadOrders").onclick=loadAdminOrders;
+if($("adminLoadOrders")) $("adminLoadOrders").onclick=loadAdminOrders;
