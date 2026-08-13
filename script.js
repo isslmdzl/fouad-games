@@ -36,14 +36,26 @@ let cart = JSON.parse(localStorage.getItem("fouadCart") || "[]");
 const $ = id => document.getElementById(id);
 const defaultSlides = ["images/hero_collage.png","images/slide_1.svg","images/slide_2.svg","images/slide_3.svg","images/slide_4.svg","images/slide_5.svg"];
 
+// دالة الحفظ الذكية لتفادي استهلاك الذاكرة
 function save(){ 
   try {
     localStorage.setItem("fouadGames", JSON.stringify(games)); 
     localStorage.setItem("fouadCart", JSON.stringify(cart)); 
     return true;
   } catch(e) {
-    alert("⚠️ الذاكرة التخزينية للمتصفح ممتلئة! يرجى حذِف بعض الألعاب المضافة سابقاً وتجربة رفع صورة أصغر.");
-    return false;
+    console.warn("LocalStorage full, trying auto-cleanup...", e);
+    // تفريغ صور الهيرو الكبيرة تلقائياً لتوفير مساحة كبيرة
+    localStorage.removeItem("fouadHeroSlides");
+    
+    try {
+      localStorage.setItem("fouadGames", JSON.stringify(games)); 
+      localStorage.setItem("fouadCart", JSON.stringify(cart)); 
+      showToast("⚠️ تم تحسين الذاكرة وتنفيذ الحفظ بنجاح");
+      return true;
+    } catch(err) {
+      alert("⚠️ الذاكرة التخزينية للمتصفح ممتلئة جداً. يرجى حذف بعض الألعاب أو تفريغ بيانات التصفح.");
+      return false;
+    }
   }
 }
 
@@ -227,7 +239,7 @@ function deleteGame(i){
 if($("adminBtn")) $("adminBtn").onclick=()=>{$("admin").classList.remove("hidden"); renderAdmin();};
 if($("adminClose")) $("adminClose").onclick=()=>$("admin").classList.add("hidden");
 
-// دالة لتقليل ضغط الصورة لأقصى درجة لحفظ المساحة
+// دالة ضغط الصور العالية الكفاءة لتفادي امتلاء localstorage
 function compressImage(file, callback) {
   const reader = new FileReader();
   reader.readAsDataURL(file);
@@ -236,13 +248,13 @@ function compressImage(file, callback) {
     img.src = event.target.result;
     img.onload = () => {
       const canvas = document.createElement('canvas');
-      const MAX_WIDTH = 220; // تصغير العرض لتصبح الصورة خفيفة جداً (أقل من 20 كيلوبايت)
+      const MAX_WIDTH = 200; // أبعاد صغيرة جداً ومناسبة للغلاف
       const scaleFactor = MAX_WIDTH / img.width;
       canvas.width = MAX_WIDTH;
       canvas.height = img.height * scaleFactor;
       const ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      callback(canvas.toDataURL('image/jpeg', 0.5));
+      callback(canvas.toDataURL('image/jpeg', 0.4)); // جودة 40% لضغط خفيف جداً
     };
   };
 }
