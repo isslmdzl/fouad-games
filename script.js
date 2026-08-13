@@ -36,7 +36,6 @@ let cart = JSON.parse(localStorage.getItem("fouadCart") || "[]");
 const $ = id => document.getElementById(id);
 const defaultSlides = ["images/hero_collage.png","images/slide_1.svg","images/slide_2.svg","images/slide_3.svg","images/slide_4.svg","images/slide_5.svg"];
 
-// دالة الحفظ الذكية لتفادي استهلاك الذاكرة
 function save(){ 
   try {
     localStorage.setItem("fouadGames", JSON.stringify(games)); 
@@ -44,16 +43,12 @@ function save(){
     return true;
   } catch(e) {
     console.warn("LocalStorage full, trying auto-cleanup...", e);
-    // تفريغ صور الهيرو الكبيرة تلقائياً لتوفير مساحة كبيرة
     localStorage.removeItem("fouadHeroSlides");
-    
     try {
       localStorage.setItem("fouadGames", JSON.stringify(games)); 
       localStorage.setItem("fouadCart", JSON.stringify(cart)); 
-      showToast("⚠️ تم تحسين الذاكرة وتنفيذ الحفظ بنجاح");
       return true;
     } catch(err) {
-      alert("⚠️ الذاكرة التخزينية للمتصفح ممتلئة جداً. يرجى حذف بعض الألعاب أو تفريغ بيانات التصفح.");
       return false;
     }
   }
@@ -168,33 +163,83 @@ if($("cartClose")) $("cartClose").onclick=()=>$("cartModal").classList.add("hidd
 if($("search")) $("search").oninput=renderGames;
 if($("checkout")) $("checkout").onclick=()=>$("customerBox").classList.remove("hidden");
 
+// === إصلاح نموذج إرسال الطلب وحفظه دائماً في المتصفح ===
 if($("orderForm")) {
   $("orderForm").onsubmit=async e=>{
     e.preventDefault();
-    if(!cart.length)return;
-    let code="FG-"+String(Date.now()).slice(-6);
-    const order={name:$("name").value,phone:$("phone").value,games:cart.map(g=>g.name),total:price(),createdAt:new Date().toISOString(),status:"جديد"};
-    let online=false;
-    try{
-      const r=await fetch("/api/orders",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(order)});
-      if(r.ok){ const x=await r.json(); code=x.code; online=true; }
-    }catch(e){}
-    if(!online){
-      const orders=JSON.parse(localStorage.getItem("fouadOrders")||"[]");
-      orders.push({...order,code});
-      localStorage.setItem("fouadOrders",JSON.stringify(orders));
+    if(!cart.length) return;
+    
+    let code = "FG-" + String(Date.now()).slice(-6);
+    const order = {
+      code: code,
+      name: $("name").value.trim(),
+      phone: $("phone").value.trim(),
+      games: cart.map(g => g.name),
+      total: price(),
+      createdAt: new Date().toISOString(),
+      status: "جديد"
+    };
+
+    // حاول الإرسال للسيرفر إذا كان متوفراً
+    try {
+      const r = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(order)
+      });
+      if(r.ok) { 
+        const x = await r.json(); 
+        if(x.code) order.code = x.code; 
+      }
+    } catch(e) {
+      console.log("إرسال أوفلاين (تم الحفظ محلياً)");
     }
+
+    // حفظ الطلب دائماً في localStorage ليظهر للزبون في "طلباتي"
+    try {
+      const orders = JSON.parse(localStorage.getItem("fouadOrders") || "[]");
+      orders.push(order);
+      localStorage.setItem("fouadOrders", JSON.stringify(orders));
+    } catch(err) {
+      console.error("تعذر حفظ الطلب في الذاكرة المحلية", err);
+    }
+
+    // إظهار رسالة النجاح
     $("success").classList.remove("hidden");
-    $("success").innerHTML=`✅ تم تسجيل الطلب<br>رقم الطلب: <strong>${code}</strong><br>احتفظ بالرمز، وتقدر تشوفه لاحقاً من «طلباتي».`;
-    cart=[]; save(); renderCart(); updateCartCount(); e.target.reset(); $("customerBox").classList.add("hidden");
+    $("success").innerHTML = `✅ تم تسجيل الطلب<br>رقم الطلب: <strong>${order.code}</strong><br>احتفظ بالرمز، وتقدر تشوفه لاحقاً من «طلباتي».`;
+    
+    // تفريغ السلة وإعادة تعيين النموذج
+    cart = []; 
+    save(); 
+    renderCart(); 
+    updateCartCount(); 
+    e.target.reset(); 
+    if($("customerBox")) $("customerBox").classList.add("hidden");
   };
 }
 
+// === عرض قائمة طلباتي للزبون بشكل سليم ===
 if($("myOrdersBtn")) {
   $("myOrdersBtn").onclick=()=>{
-    const orders=JSON.parse(localStorage.getItem("fouadOrders")||"[]");
-    $("orders").innerHTML=orders.length?orders.slice().reverse().map(o=>`<div class="order-card"><b>${o.code}</b><br><span class="status">${o.status}</span><br>${o.games.join(" • ")}<br><strong>${priceFmt(o.total)}</strong></div>`).join(""):"<p>ما عندك حتى طلب محفوظ في هذا المتصفح.</p>";
-    $("ordersModal").classList.remove("hidden");
+    let orders = [];
+    try {
+      orders = JSON.parse(localStorage.getItem("fouadOrders") || "[]");
+    } catch(e) {
+      orders = [];
+    }
+
+    $("orders").innerHTML = orders.length 
+      ? orders.slice().reverse().map(o => `
+        <div class="order-card" style="border:1px solid #333; padding:10px; margin-bottom:10px; border-radius:8px; background:#1a1a1a;">
+          <b>رقم الطلب: ${o.code}</b><br>
+          <span class="status" style="color:#e50914; font-weight:bold;">الحالة: ${o.status || 'جديد'}</span><br>
+          <div style="font-size:14px; margin:5px 0;">الألعاب: ${Array.isArray(o.games) ? o.games.join(" • ") : o.games}</div>
+          <strong style="color:#28a745;">${priceFmt(o.total || 0)}</strong>
+        </div>
+      `).join("") 
+      : "<p>ما عندك حتى طلب محفوظ في هذا المتصفح.</p>";
+      
+    if($("ordersModal")) $("ordersModal").classList.remove("hidden");
   };
 }
 if($("ordersClose")) $("ordersClose").onclick=()=>$("ordersModal").classList.add("hidden");
@@ -239,7 +284,6 @@ function deleteGame(i){
 if($("adminBtn")) $("adminBtn").onclick=()=>{$("admin").classList.remove("hidden"); renderAdmin();};
 if($("adminClose")) $("adminClose").onclick=()=>$("admin").classList.add("hidden");
 
-// دالة ضغط الصور العالية الكفاءة لتفادي امتلاء localstorage
 function compressImage(file, callback) {
   const reader = new FileReader();
   reader.readAsDataURL(file);
@@ -248,18 +292,17 @@ function compressImage(file, callback) {
     img.src = event.target.result;
     img.onload = () => {
       const canvas = document.createElement('canvas');
-      const MAX_WIDTH = 200; // أبعاد صغيرة جداً ومناسبة للغلاف
+      const MAX_WIDTH = 200; 
       const scaleFactor = MAX_WIDTH / img.width;
       canvas.width = MAX_WIDTH;
       canvas.height = img.height * scaleFactor;
       const ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      callback(canvas.toDataURL('image/jpeg', 0.4)); // جودة 40% لضغط خفيف جداً
+      callback(canvas.toDataURL('image/jpeg', 0.4)); 
     };
   };
 }
 
-// إضافة لعبة جديدة
 if($("addGame")) {
   $("addGame").addEventListener("submit", function(e) {
     e.preventDefault();
